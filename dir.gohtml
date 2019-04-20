@@ -1,0 +1,46 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>{{ .Path }}</title>
+  {{$p := .Path}}
+</head>
+<body>
+  <h1>Files</h1>
+  <h2>Current directory: {{$p}}</h2>
+  <table>
+    <tr align="left">
+      <th>File</th>
+      <th>Type</th>
+      <th>Size</th>
+    </tr>
+    <tr>
+      <td><a href="/">/</a></td>
+    </tr>
+    <tr>
+      <td><a href="{{dir $p}}">..</a></td>
+    </tr>
+    {{range .Files}}
+      <tr>
+        <td><a href="{{join $p .Name}}">
+          {{ .Name -}}
+          {{ if .IsDir -}}
+            /
+          {{end}}
+        </a></td>
+        <td>
+          {{if not .IsDir}}
+            {{ext .Name}}
+          {{end}}
+        </td>
+        <td align="right">
+          {{if not .IsDir}}
+            {{.Size}}
+          {{end}}
+        </td> 
+      </tr>
+    {{end}}
+  </table>
+</body>
+</html>
