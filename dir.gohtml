@@ -1,5 +1,20 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
+  <style>
+  table {
+    /* border-collapse: collapse; */
+    width: 50%;
+  }
+  td, th {
+    border: 1px dashed grey;
+    padding: 4px;
+  }
+  tr:nth-child(even) {
+    background-color: lightgray;
+  }
+  </style>
+
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
@@ -8,37 +23,50 @@
 </head>
 <body>
   <h1>Files</h1>
-  <h2>Current directory: {{$p}}</h2>
+  <h2>current directory: {{$p}}</h2>
+  <p>
+    <form action="{{join `/upload` $p}}" method="POST" enctype="multipart/form-data">
+      Select files to upload into current directory:
+      <input type="file" name="files" multiple><br>
+      <input type="submit" value="upload">
+    </form>
+  </p>
   <table>
     <tr align="left">
       <th>File</th>
       <th>Type</th>
+      <th>Modified</th>
       <th>Size</th>
     </tr>
     <tr>
-      <td><a href="/">/</a></td>
+      <td colspan="4"><a href="/dir">/</a></td>
     </tr>
     <tr>
-      <td><a href="{{dir $p}}">..</a></td>
+      <td colspan="4"><a href="{{Dir $p | join `/dir`}}">..</a></td>
     </tr>
     {{range .Files}}
       <tr>
-        <td><a href="{{join $p .Name}}">
+        <td><a href="{{join `/dir` $p .Name}}"> <!--Name-->
           {{ .Name -}}
           {{ if .IsDir -}}
             /
           {{end}}
         </a></td>
-        <td>
+        <td> <!--Type-->
           {{if not .IsDir}}
             {{ext .Name}}
           {{end}}
         </td>
-        <td align="right">
+        <td><!--Modified-->
+          {{if not .IsDir}}
+          {{.ModTime.Format "02/01/2006 15:04:05"}}
+          {{end}}
+        </td>
+        <td align="right"> <!--Size-->
           {{if not .IsDir}}
             {{.Size}}
           {{end}}
-        </td> 
+        </td>
       </tr>
     {{end}}
   </table>

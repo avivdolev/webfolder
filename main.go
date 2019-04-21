@@ -15,43 +15,53 @@ import (
 var (
 	base         = flag.String("d", os.Getenv("HOME"), "directory to serve")
 	addr         = flag.String("http", ":6060", "addr:port for server")
-	templateName = "dir.gohtml"
+	templateFile = "dir.gohtml"
+	tmpl         *template.Template
 )
 
 func main() {
 	flag.Parse()
 
+	tmpl = makeTemplate()
+
 	r := gin.Default()
-	r.GET("/*path", handlePath)
+	r.GET("/", func(c *gin.Context) {
+		c.Redirect(http.StatusFound, "/dir")
+		return
+	})
+	r.GET("/dir/*path", handlePath)
+	r.POST("/upload/*path", handleUpload)
 
 	r.Run(*addr)
 }
 
-func handlePath(c *gin.Context) {
-	tmpl := template.Must(template.New(templateName).Funcs(template.FuncMap{
+func makeTemplate() *template.Template {
+	return template.Must(template.New(templateFile).Funcs(template.FuncMap{
 		"ext":  filepath.Ext,
-		"dir":  filepath.Dir,
+		"Dir":  filepath.Dir,
 		"join": path.Join,
-	}).ParseFiles(templateName))
-	path := path.Join(*base, c.Param("path"))
-	p, err := os.Stat(path)
+	}).ParseFiles(templateFile))
+}
+
+func handlePath(c *gin.Context) {
+	fpath := filepath.Join(*base, c.Param("path"))
+	p, err := os.Stat(fpath)
 	if err != nil {
-		c.Redirect(http.StatusFound, "/")
+		c.Redirect(http.StatusFound, "/dir")
 		return
 	}
 
 	if !p.IsDir() {
-		c.File(path)
+		c.File(fpath)
 		return
 	}
 
-	files, err := ioutil.ReadDir(path)
+	files, err := ioutil.ReadDir(fpath)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "internal error while reading directory"})
 		return
 	}
 	tmpl.Execute(c.Writer, struct {
-		Base  string
 		Path  string
 		Files []os.FileInfo
 	}{
@@ -62,4 +72,23 @@ func handlePath(c *gin.Context) {
 	c.Writer.Flush()
 
 	return
+}
+
+func handleUpload(c *gin.Context) {
+	fpath := filepath.Join(*base, c.Param("path"))
+	form, err := c.MultipartForm()
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "bad form"})
+		return
+	}
+
+	files := form.File["files"]
+
+	for _, file := range files {
+		fname := filepath.Join(fpath, file.Filename)
+		if err := c.SaveUploadedFile(file, fname); err != nil {
+			continue
+		}
+	}
+	c.Redirect(http.StatusFound, path.Join("/dir", c.Param("path")))
 }
